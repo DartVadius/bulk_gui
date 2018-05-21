@@ -29,9 +29,12 @@ class ParserForm(QMainWindow):
         self.clients.addItems([None, 'silverstreet', 'mmds', 'nrs', 'idm', 'fortyTwo', 'itd'])
         self.clients.currentIndexChanged.connect(self.selectionchange)
 
+        self.msg = QLabel()
+
         self.form_layout.addRow(message_file_select, button)
         self.form_layout.addRow(QLabel('Selected file:'), self.file_label)
         self.form_layout.addRow(QLabel('Select client:'), self.clients)
+        self.form_layout.addRow(QLabel(), self.msg)
 
     def selectionchange(self):
         self.client_name = self.clients.currentText()

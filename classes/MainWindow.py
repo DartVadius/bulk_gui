@@ -1,14 +1,15 @@
 #!/usr/bin/python3 -u
 
-from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, qApp, QAction, QSystemTrayIcon, QStyle, QMenu, \
-    QDialog, QMessageBox, QDesktopWidget, QToolTip, QPushButton, QTextEdit, QBoxLayout, QVBoxLayout, QHBoxLayout, \
-    QFrame, QLineEdit, QFormLayout, QGroupBox, QScrollArea, QComboBox, QCalendarWidget, QDateEdit, QSizePolicy
-from PyQt5.QtCore import QSize, Qt, QDate
-from PyQt5.QtGui import QIcon, QPixmap, QFont
+from PyQt5.QtWidgets import QMainWindow, QLabel, QGridLayout, QWidget, QAction, QSystemTrayIcon, QStyle, QMenu, \
+    QMessageBox, QDesktopWidget, QPushButton, QVBoxLayout, QHBoxLayout, \
+    QFrame, QGroupBox, QScrollArea, QSizePolicy
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QIcon
 from connector import Connector
 from classes.CurlForm import CurlForm
 from classes.ConfigForm import ConfigForm
 from classes.ParserForm import ParserForm
+from classes.HlrForm import HlrForm
 import requests
 import subprocess
 
@@ -39,6 +40,7 @@ class MainWindow(QMainWindow):
     left_menu = None
     form_layout = None
     connector = None
+    hlr_res = None
 
     # Переопределяем конструктор класса
     def __init__(self):
@@ -74,11 +76,13 @@ class MainWindow(QMainWindow):
         left_menu = QVBoxLayout()
         names = [
             'SMPP/HTTP API',
+            'HLR',
             'Parser',
             'Config',
         ]
         actions = [
             self.query,
+            self.hlr,
             self.parse,
             self.config,
         ]
@@ -89,6 +93,21 @@ class MainWindow(QMainWindow):
             left_menu.addWidget(button)
         left_menu.addStretch()
         return left_menu
+
+    @action_decorator
+    def hlr(self):
+        self.main_widget = QGroupBox()
+        self.form_layout = HlrForm()
+        self.main_widget.setLayout(self.form_layout.get_layout())
+        self.main_field.addWidget(self.main_widget)
+        button_layout = self.hlr_button_layout()
+        group_box = QGroupBox(self)
+        group_box.setLayout(button_layout)
+        self.main_field.addWidget(group_box)
+        self.hlr_res = QLabel()
+        self.hlr_res.setWordWrap(True)
+        self.main_field.addWidget(self.hlr_res)
+        self.main_field.addStretch()
 
     @action_decorator
     def parse(self):
@@ -176,11 +195,22 @@ class MainWindow(QMainWindow):
         group_box.setLayout(sms)
         return group_box
 
+    def hlr_button_layout(self):
+        button_layout = QGridLayout()
+
+        button = QPushButton('HLR check')
+        button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_MediaPlay')))
+        button.clicked.connect(self.hlr_check)
+        button.setStyleSheet("width: 90px; height: 20px;")
+        button_layout.addWidget(button, 1, 1, 1, 1)
+        button_layout.addWidget(QLabel(''), 1, 2, 1, 10)
+        return button_layout
+
     def parser_button_layout(self):
         button_layout = QGridLayout()
 
         button = QPushButton('Parse')
-        button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogSaveButton')))
+        button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_MediaPlay')))
         button.clicked.connect(self.parse_file)
         button.setStyleSheet("width: 90px; height: 20px;")
         button_layout.addWidget(button, 1, 1, 1, 1)
@@ -195,12 +225,10 @@ class MainWindow(QMainWindow):
         if file_name is not None and client_name is not None:
             process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
             output, error = process.communicate()
-            print(output, error)
-
+            self.form_layout.msg.setText(output.decode("utf-8"))
 
     def config_button_layout(self):
         button_layout = QGridLayout()
-
         button = QPushButton('Save')
         button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogSaveButton')))
         button.clicked.connect(self.save_config)
@@ -264,6 +292,17 @@ class MainWindow(QMainWindow):
         ]
         self.connector.save_sms(data)
         self.query()
+
+    def hlr_check(self):
+        phone = self.form_layout.get_phone()
+        params = self.connector.get_config()
+        data = dict()
+        data['username'] = params['username']
+        data['api_key'] = params['api_key']
+        data['destination'] = phone
+        r = requests.get('http://api.bulkness.com/hlr/', params=data)
+        self.hlr_res.setText(r.text)
+        print(r.text)
 
     def send_sms_api(self):
         message_from = self.form_layout.get_from()

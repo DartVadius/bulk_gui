@@ -5,7 +5,7 @@ class Connector:
     connector = None
 
     def __init__(self):
-        self.connector = sqlite3.connect("db/mydb.db")
+        self.connector = sqlite3.connect("/home/vad/www/smpp/db/mydb.db")
         self.cursor = self.connector.cursor()
 
     def get_config(self):
